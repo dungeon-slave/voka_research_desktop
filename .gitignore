@@ -1,0 +1,36 @@
+# Flutter
+.build/
+.dart_tool/
+.packages
+pubspec.lock
+
+# Windows build
+build/
+windows/flutter/ephemeral/
+
+# Visual Studio
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+*.sln
+*.pdb
+*.obj
+*.ipch
+*.log
+
+# Unity
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+UserSettings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
