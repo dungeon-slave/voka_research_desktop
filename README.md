@@ -1,4 +1,4 @@
-# voka_research_windows
+# voka_research_desktop
 
 A new Flutter project.
 

@@ -34,3 +34,6 @@ Thumbs.db
 # IntelliJ / Android Studio
 .idea/
 *.iml
+
+# FVM Version Cache
+.fvm/
