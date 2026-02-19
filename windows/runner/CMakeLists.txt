@@ -49,6 +49,10 @@ set(UNITY_BUILD_PATH "${PROJECT_ROOT}/unity_build")
 
 add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${UNITY_BUILD_PATH}/AnatomyPro.exe"
+        "$<TARGET_FILE_DIR:${BINARY_NAME}>/AnatomyPro.exe"
+
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${UNITY_BUILD_PATH}/UnityPlayer.dll"
         "$<TARGET_FILE_DIR:${BINARY_NAME}>/UnityPlayer.dll"
 
@@ -65,6 +69,6 @@ add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
         "$<TARGET_FILE_DIR:${BINARY_NAME}>/D3D12"
 
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${UNITY_BUILD_PATH}/voka_research_windows_Data"
-        "$<TARGET_FILE_DIR:${BINARY_NAME}>/voka_research_windows_Data"
+        "${UNITY_BUILD_PATH}/AnatomyPro_Data"
+        "$<TARGET_FILE_DIR:${BINARY_NAME}>/AnatomyPro_Data"
 )

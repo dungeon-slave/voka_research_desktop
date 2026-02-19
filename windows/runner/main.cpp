@@ -1,188 +1,255 @@
-// #include <flutter/dart_project.h>
-// #include <flutter/flutter_view_controller.h>
-// #include <windows.h>
-
-// #include "flutter_window.h"
-// #include "utils.h"
-
-// int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
-//                       _In_ wchar_t *command_line, _In_ int show_command) {
-//   // Attach to console when present (e.g., 'flutter run') or create a
-//   // new console when running with a debugger.
-//   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
-//     CreateAndAttachConsole();
-//   }
-
-//   // Initialize COM, so that it is available for use in the library and/or
-//   // plugins.
-//   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-
-//   flutter::DartProject project(L"data");
-
-//   std::vector<std::string> command_line_arguments =
-//       GetCommandLineArguments();
-
-//   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
-
-//   FlutterWindow window(project);
-//   Win32Window::Point origin(10, 10);
-//   Win32Window::Size size(1280, 720);
-//   if (!window.Create(L"voka_research_windows", origin, size)) {
-//     return EXIT_FAILURE;
-//   }
-//   window.SetQuitOnClose(true);
-
-//   // === Launch Unity Embedded ===
-
-//   HWND flutter_hwnd = window.GetHandle();
-
-//   // Загружаем UnityPlayer.dll
-//   HMODULE unityModule = LoadLibrary(L"UnityPlayer.dll");
-//   if (!unityModule) {
-//     MessageBox(nullptr, L"Failed to load UnityPlayer.dll", L"Error", MB_OK);
-//   } else {
-
-//     typedef int(__stdcall* UnityMainFunc)(
-//         HINSTANCE hInstance,
-//         HINSTANCE hPrevInstance,
-//         LPWSTR lpCmdLine,
-//         int nShowCmd);
-
-//     UnityMainFunc unityMain =
-//         (UnityMainFunc)GetProcAddress(unityModule, "UnityMain");
-
-//     if (!unityMain) {
-//       MessageBox(nullptr, L"Failed to find UnityMain", L"Error", MB_OK);
-//     } else {
-
-//       wchar_t cmdLine[256];
-//       swprintf_s(
-//         cmdLine,
-//         L"-parentHWND %llu -force-d3d11 -logFile unity.log",
-//         (unsigned long long)flutter_hwnd
-//       );
-
-//       unityMain(
-//         GetModuleHandle(nullptr),
-//         nullptr,
-//         cmdLine,
-//         SW_SHOW
-//       );
-//     }
-//   }
-
-//   ::MSG msg;
-//   while (::GetMessage(&msg, nullptr, 0, 0)) {
-//     ::TranslateMessage(&msg);
-//     ::DispatchMessage(&msg);
-//   }
-
-//   ::CoUninitialize();
-//   return EXIT_SUCCESS;
-// }
-
-
+#include <windows.h>
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
-#include <windows.h>
+#include <memory>
+#include <string>
 
-#include "flutter_window.h"
-#include "utils.h"
+#pragma comment(lib, "user32.lib")
 
-// ===== Global Unity HWND =====
+// ============================
+// Layout constants
+// ============================
+
+const int kTopBarHeight = 60;
+const int kLeftPanelWidth = 200;
+const int kRightPanelWidth = 250;
+
+// ============================
+// Globals
+// ============================
+
+HWND g_main_hwnd = nullptr;
 HWND g_unity_hwnd = nullptr;
 
-// ===== Find Unity child window =====
-BOOL CALLBACK EnumChildProc(HWND hwnd, LPARAM lParam)
-{
-  wchar_t class_name[256];
-  GetClassName(hwnd, class_name, 256);
+std::unique_ptr<flutter::FlutterViewController> g_flutter_controller;
 
-  if (wcscmp(class_name, L"UnityWndClass") == 0)
-  {
-    g_unity_hwnd = hwnd;
-    return FALSE;
-  }
+// ============================
+// Resize Layout
+// ============================
 
-  return TRUE;
+void UpdateLayout() {
+
+    if (!g_main_hwnd)
+        return;
+
+    RECT rect;
+    GetClientRect(g_main_hwnd, &rect);
+
+    int totalWidth = rect.right;
+    int totalHeight = rect.bottom;
+
+    int unityWidth = totalWidth - kLeftPanelWidth - kRightPanelWidth;
+    int unityHeight = totalHeight - kTopBarHeight;
+
+    if (unityWidth < 0) unityWidth = 0;
+    if (unityHeight < 0) unityHeight = 0;
+
+    // Flutter занимает всё окно
+    if (g_flutter_controller) {
+        HWND flutter_hwnd = g_flutter_controller->view()->GetNativeWindow();
+        MoveWindow(flutter_hwnd, 0, 0, totalWidth, totalHeight, TRUE);
+    }
+
+    // Unity в центре
+    if (g_unity_hwnd && IsWindow(g_unity_hwnd)) {
+        MoveWindow(
+            g_unity_hwnd,
+            kLeftPanelWidth,
+            kTopBarHeight,
+            unityWidth,
+            unityHeight,
+            TRUE
+        );
+    }
 }
 
-int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
-                      _In_ wchar_t *command_line, _In_ int show_command)
-{
-  if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
-    CreateAndAttachConsole();
-  }
+// ============================
+// Launch Unity
+// ============================
 
-  ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+bool LaunchUnity() {
 
-  flutter::DartProject project(L"data");
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileName(nullptr, exePath, MAX_PATH);
 
-  std::vector<std::string> command_line_arguments =
-      GetCommandLineArguments();
+    std::wstring path(exePath);
+    size_t pos = path.find_last_of(L"\\/");
+    std::wstring directory = path.substr(0, pos + 1);
+    std::wstring unityExe = directory + L"AnatomyPro.exe";
 
-  project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
+    std::wstring commandLine =
+        L"\"" + unityExe + L"\""
+        L" -popupwindow"
+        L" -parentHWND " + std::to_wstring((uint64_t)g_main_hwnd)
+        + L" delayed";
 
-  FlutterWindow window(project);
-  Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+    STARTUPINFO si{};
+    si.cb = sizeof(si);
 
-  if (!window.Create(L"voka_research_windows", origin, size)) {
-    return EXIT_FAILURE;
-  }
+    PROCESS_INFORMATION pi{};
 
-  window.SetQuitOnClose(true);
+    if (!CreateProcess(
+        nullptr,
+        commandLine.data(),
+        nullptr,
+        nullptr,
+        FALSE,
+        0,
+        nullptr,
+        directory.c_str(),
+        &si,
+        &pi)) {
 
-  // ===============================
-  // Launch Unity via CreateProcess
-  // ===============================
+        MessageBox(nullptr, L"Failed to launch Unity", L"Error", MB_OK);
+        return false;
+    }
 
-  HWND flutter_hwnd = window.GetHandle();
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
 
-  wchar_t commandLine[512];
-  swprintf_s(
-      commandLine,
-      L"UnityBuild\\voka_research_windows.exe -parentHWND %llu -force-d3d11 -logFile unity.log",
-      (unsigned long long)flutter_hwnd
-  );
+    return true;
+}
 
-  STARTUPINFO si = { sizeof(si) };
-  PROCESS_INFORMATION pi;
+// ============================
+// Find Unity child window
+// ============================
 
-  BOOL success = CreateProcess(
-      nullptr,
-      commandLine,
-      nullptr,
-      nullptr,
-      FALSE,
-      0,
-      nullptr,
-      nullptr,
-      &si,
-      &pi
-  );
+HWND FindUnityChild(HWND parent) {
 
-  if (success)
-  {
-    Sleep(1000);
-    EnumChildWindows(flutter_hwnd, EnumChildProc, NULL);
-  }
-  else
-  {
-    MessageBox(nullptr, L"Failed to launch Unity process", L"Error", MB_OK);
-  }
+    HWND child = nullptr;
 
-  // ===============================
-  // Standard message loop
-  // ===============================
+    while ((child = FindWindowEx(parent, child, nullptr, nullptr)) != nullptr) {
 
-  ::MSG msg;
-  while (::GetMessage(&msg, nullptr, 0, 0))
-  {
-    ::TranslateMessage(&msg);
-    ::DispatchMessage(&msg);
-  }
+        wchar_t className[256];
+        GetClassName(child, className, 256);
 
-  ::CoUninitialize();
-  return EXIT_SUCCESS;
+        if (wcsstr(className, L"Unity") != nullptr)
+            return child;
+    }
+
+    return nullptr;
+}
+
+// ============================
+// Window Procedure
+// ============================
+
+LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+
+    switch (msg) {
+
+    case WM_SIZE:
+        UpdateLayout();
+        break;
+
+    case WM_CLOSE:
+        if (g_unity_hwnd && IsWindow(g_unity_hwnd))
+            PostMessage(g_unity_hwnd, WM_CLOSE, 0, 0);
+
+        DestroyWindow(hwnd);
+        break;
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    }
+
+    return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+// ============================
+// Entry Point
+// ============================
+
+int APIENTRY wWinMain(HINSTANCE instance,
+                      HINSTANCE,
+                      wchar_t*,
+                      int show_command) {
+
+    ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
+    // Register main window class
+    WNDCLASS wc{};
+    wc.lpfnWndProc = MainWndProc;
+    wc.hInstance = instance;
+    wc.lpszClassName = L"MainWindowClass";
+    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+
+    RegisterClass(&wc);
+
+    g_main_hwnd = CreateWindowEx(
+        0,
+        L"MainWindowClass",
+        L"AnatomyPro",
+        WS_OVERLAPPEDWINDOW,
+        100, 100,
+        1280, 800,
+        nullptr,
+        nullptr,
+        instance,
+        nullptr
+    );
+
+    ShowWindow(g_main_hwnd, show_command);
+    UpdateWindow(g_main_hwnd);
+
+    // ============================
+    // Create Flutter as child
+    // ============================
+
+    flutter::DartProject project(L"data");
+
+    g_flutter_controller =
+        std::make_unique<flutter::FlutterViewController>(
+            1280,
+            800,
+            project
+        );
+
+    HWND flutter_hwnd =
+        g_flutter_controller->view()->GetNativeWindow();
+
+    SetParent(flutter_hwnd, g_main_hwnd);
+    ShowWindow(flutter_hwnd, SW_SHOW);
+
+    // ============================
+    // Launch Unity
+    // ============================
+
+    if (!LaunchUnity())
+        return 0;
+
+    // Wait for Unity window
+    for (int i = 0; i < 200; ++i) {
+
+        g_unity_hwnd = FindUnityChild(g_main_hwnd);
+
+        if (g_unity_hwnd)
+            break;
+
+        Sleep(50);
+    }
+
+    if (!g_unity_hwnd) {
+        MessageBox(nullptr, L"Unity window not found", L"Error", MB_OK);
+        return 0;
+    }
+
+    ShowWindow(g_unity_hwnd, SW_SHOW);
+
+    UpdateLayout();
+
+    // ============================
+    // Message Loop
+    // ============================
+
+    MSG msg;
+    while (GetMessage(&msg, nullptr, 0, 0)) {
+
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    ::CoUninitialize();
+    return EXIT_SUCCESS;
 }
