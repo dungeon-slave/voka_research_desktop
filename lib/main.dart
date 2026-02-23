@@ -143,7 +143,7 @@ class HomePage extends StatelessWidget {
             width: 200,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5), // Полупрозрачный черный
+                color: Colors.black54, // Полупрозрачный черный
                 borderRadius: BorderRadius.circular(16),
               ),
               padding: const EdgeInsets.all(16.0),
@@ -171,7 +171,7 @@ class HomePage extends StatelessWidget {
             width: 200,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black54,
                 borderRadius: BorderRadius.circular(16),
               ),
               padding: const EdgeInsets.all(16.0),
