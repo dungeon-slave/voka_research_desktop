@@ -27,6 +27,9 @@ Builds/
 Logs/
 UserSettings/
 
+#Unity macos build
+/macos/MacOS.app/
+
 # OS
 .DS_Store
 Thumbs.db
