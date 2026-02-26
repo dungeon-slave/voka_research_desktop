@@ -4,11 +4,23 @@
 
 // Подключаем C-API Windows Embedder
 #include <flutter_windows.h>
-
-// Подключаем каналы
 #include <flutter/generated_plugin_registrant.h>
 #include <flutter/method_channel.h>
 #include <flutter/standard_method_codec.h>
+
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <vector>
+#include <chrono>
+
+// ============================
+// Константы конфигурации
+// ============================
+constexpr size_t kRenderWidth = 1280;
+constexpr size_t kRenderHeight = 800;
+constexpr size_t kBytesPerPixel = 4;
+constexpr size_t kBufferSize = kRenderWidth * kRenderHeight * kBytesPerPixel;
 
 // ============================
 // Глобальные переменные
@@ -19,31 +31,109 @@ FlutterDesktopPixelBuffer g_pixel_buffer{};
 
 int64_t g_unity_texture_id = -1;
 HANDLE g_unity_process = nullptr;
+HANDLE g_hFrameEvent = nullptr;
 
-// Ссылка на C-API регистратор текстур
 FlutterDesktopTextureRegistrarRef g_c_texture_registrar = nullptr;
+
+std::vector<uint8_t> g_local_buffer;
+std::mutex g_buffer_mutex;
+std::atomic<bool> g_is_running{false};
+std::thread g_render_thread;
 
 // ============================
 // Shared Memory & Unity
 // ============================
 void InitSharedMemory() {
     if (g_pBuffer) return; 
+    
     g_hMapFile = OpenFileMappingA(FILE_MAP_READ, FALSE, "FlutterUnitySharedMem");
     if (g_hMapFile) {
-        g_pBuffer = MapViewOfFile(g_hMapFile, FILE_MAP_READ, 0, 0, 1280 * 800 * 4);
+        g_pBuffer = MapViewOfFile(g_hMapFile, FILE_MAP_READ, 0, 0, kBufferSize);
         if (g_pBuffer) {
-            g_pixel_buffer.width = 1280;
-            g_pixel_buffer.height = 800;
-            g_pixel_buffer.buffer = static_cast<const uint8_t*>(g_pBuffer);
+            // Защищаем инициализацию, чтобы избежать гонки данных при старте
+            std::lock_guard<std::mutex> lock(g_buffer_mutex);
+            g_local_buffer.resize(kBufferSize);
+            
+            g_pixel_buffer.width = kRenderWidth;
+            g_pixel_buffer.height = kRenderHeight;
+            g_pixel_buffer.buffer = g_local_buffer.data();
         }
     }
 }
 
-// C-Callback для текстуры, который Flutter будет вызывать при отрисовке кадра
+void StartFrameListener() {
+    g_is_running = true;
+    g_render_thread = std::thread([]() {
+        
+        // 1. Ждем Event от Unity (без спама принтами)
+        while (g_is_running && !g_hFrameEvent) {
+            g_hFrameEvent = OpenEventA(EVENT_ALL_ACCESS, FALSE, "FlutterUnityFrameReady");
+            if (!g_hFrameEvent) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            }
+        }
+
+        // 2. Основной цикл рендеринга
+        while (g_is_running) {
+            if (!g_hFrameEvent) break;
+
+            DWORD waitResult = WaitForSingleObject(g_hFrameEvent, 16); 
+            
+            if (waitResult == WAIT_OBJECT_0) {                
+                if (!g_pBuffer) {
+                    InitSharedMemory();
+                }
+
+                // if (g_pBuffer) {
+                //     // ОПТИМИЗАЦИЯ: Сужаем область видимости мьютекса
+                //     {
+                //         std::lock_guard<std::mutex> lock(g_buffer_mutex);
+                //         memcpy(g_local_buffer.data(), g_pBuffer, kBufferSize);
+                        
+                //         // --- ЭКСПЕРИМЕНТ: Уничтожаем прозрачность ---
+                //         // Проходим по всему массиву и делаем каждый пиксель непрозрачным (Alpha = 255)
+                //         // Формат пикселя BGRA или RGBA, альфа всегда 4-й байт
+                //         uint8_t* pixels = g_local_buffer.data();
+                //         for (size_t i = 3; i < kBufferSize; i += 4) {
+                //             pixels[i] = 255; 
+                //         }
+                //         // ----------------------------------------------
+                //     } // <-- Мьютекс отпускается
+                    
+                //     // Уведомляем Flutter
+                //     if (g_c_texture_registrar && g_unity_texture_id != -1) {
+                //         FlutterDesktopTextureRegistrarMarkExternalTextureFrameAvailable(g_c_texture_registrar, g_unity_texture_id);
+                //     }
+                // }
+
+                if (g_pBuffer) {
+                    // ОПТИМИЗАЦИЯ: Сужаем область видимости мьютекса
+                    {
+                        std::lock_guard<std::mutex> lock(g_buffer_mutex);
+                        memcpy(g_local_buffer.data(), g_pBuffer, kBufferSize);
+                    } // <-- Мьютекс отпускается ЗДЕСЬ, это критично!
+                    
+                    // Уведомляем Flutter, не блокируя буфер
+                    if (g_c_texture_registrar && g_unity_texture_id != -1) {
+                        FlutterDesktopTextureRegistrarMarkExternalTextureFrameAvailable(g_c_texture_registrar, g_unity_texture_id);
+                    }
+                }
+            }
+        }
+        
+        if (g_hFrameEvent) {
+            CloseHandle(g_hFrameEvent);
+            g_hFrameEvent = nullptr;
+        }
+    });
+}
+
+// C-Callback для текстуры, который Flutter вызывает при рендере
 const FlutterDesktopPixelBuffer* TextureCopyCallback(size_t width, size_t height, void* user_data) {
-    InitSharedMemory();
-    if (g_pBuffer) return &g_pixel_buffer;
-    return nullptr;
+    std::lock_guard<std::mutex> lock(g_buffer_mutex);
+    if (g_local_buffer.empty()) return nullptr;
+
+    return &g_pixel_buffer;
 }
 
 bool LaunchUnity() {
@@ -54,7 +144,6 @@ bool LaunchUnity() {
     std::wstring directory = path.substr(0, pos + 1);
     std::wstring unityExe = directory + L"AnatomyPro.exe";
     
-    // Идеальный запуск: только -batchmode
     std::wstring commandLine = L"\"" + unityExe + L"\" -batchmode";
 
     STARTUPINFO si{};
@@ -67,6 +156,7 @@ bool LaunchUnity() {
     
     g_unity_process = pi.hProcess; 
     CloseHandle(pi.hThread);
+
     return true;
 }
 
@@ -89,25 +179,19 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  // --- МАГИЯ C-API ---
-  // 1. Получаем C-API Registrar напрямую 
   FlutterDesktopPluginRegistrarRef c_plugin_registrar = 
       flutter_controller_->engine()->GetRegistrarForPlugin("UnityTextureBridge");
 
-  // 2. ИСПРАВЛЕНО: Правильное название функции из C-API
   g_c_texture_registrar = FlutterDesktopRegistrarGetTextureRegistrar(c_plugin_registrar);
 
-  // 3. Настраиваем структуру текстуры
   FlutterDesktopTextureInfo texture_info = {};
   texture_info.type = kFlutterDesktopPixelBufferTexture;
   texture_info.pixel_buffer_config.callback = TextureCopyCallback;
   texture_info.pixel_buffer_config.user_data = nullptr;
 
-  // 4. Регистрируем текстуру
   g_unity_texture_id = FlutterDesktopTextureRegistrarRegisterExternalTexture(
       g_c_texture_registrar, &texture_info);
 
-  // --- METHOD CHANNEL (C++) ---
   auto messenger = flutter_controller_->engine()->messenger();
   auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
       messenger, "unity_channel",
@@ -124,20 +208,23 @@ bool FlutterWindow::OnCreate() {
       });
 
   LaunchUnity();
-  SetTimer(GetHandle(), 1, 16, nullptr);
+  StartFrameListener();
 
   return true;
 }
 
 void FlutterWindow::OnDestroy() {
-  // Завершаем фоновый процесс Unity
+  g_is_running = false;
+  if (g_render_thread.joinable()) {
+      g_render_thread.join();
+  }
+
   if (g_unity_process) {
       TerminateProcess(g_unity_process, 0);
       CloseHandle(g_unity_process);
       g_unity_process = nullptr;
   }
 
-  // Очистка памяти
   if (g_pBuffer) UnmapViewOfFile(g_pBuffer);
   if (g_hMapFile) CloseHandle(g_hMapFile);
   
@@ -152,12 +239,6 @@ void FlutterWindow::OnDestroy() {
 }
 
 LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message, WPARAM const wparam, LPARAM const lparam) noexcept {
-  if (message == WM_TIMER && wparam == 1) {
-      if (g_c_texture_registrar && g_unity_texture_id != -1) {
-          FlutterDesktopTextureRegistrarMarkExternalTextureFrameAvailable(g_c_texture_registrar, g_unity_texture_id);
-      }
-  }
-
   if (flutter_controller_) {
     std::optional<LRESULT> result = flutter_controller_->HandleTopLevelWindowProc(hwnd, message, wparam, lparam);
     if (result) return *result;

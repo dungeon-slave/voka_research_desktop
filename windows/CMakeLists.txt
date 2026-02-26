@@ -106,25 +106,3 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
-
-# === Unity runtime install ===
-
-#get_filename_component(PROJECT_ROOT "${CMAKE_SOURCE_DIR}/../.." ABSOLUTE)
-#set(UNITY_BUILD_PATH "${PROJECT_ROOT}/unity_build")
-
-#install(FILES
-#    "${UNITY_BUILD_PATH}/UnityPlayer.dll"
-#    "${UNITY_BUILD_PATH}/GameAssembly.dll"
-#    "${UNITY_BUILD_PATH}/baselib.dll"
-#    DESTINATION .
-#)
-
-#install(DIRECTORY
-#    "${UNITY_BUILD_PATH}/D3D12"
-#    DESTINATION .
-#)
-
-#install(DIRECTORY
-#    "${UNITY_BUILD_PATH}/voka_research_windows_Data"
-#    DESTINATION .
-#)

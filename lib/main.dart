@@ -55,34 +55,24 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.white, // Фон может быть любым, он под текстурой
       body: Stack(
         children: [
-          // 1. БАЗОВЫЙ СЛОЙ: Текстура Unity
           Positioned.fill(
             child: _textureId == null
                 ? const Center(child: CircularProgressIndicator())
-                : Texture(textureId: _textureId!), // Рисуем кадры из Unity!
+                : Transform.scale(
+                    scaleX: 1, // Исправляет отзеркаливание по горизонтали
+                    scaleY: -1, // Переворачивает картинку по вертикали
+                    alignment: Alignment.center,
+                    child: Texture(
+                      textureId: _textureId!, 
+                      filterQuality: FilterQuality.high,
+                    ),
+                  ),
           ),
-
-          // 2. ДЕТЕКТОР ЖЕСТОВ поверх текстуры
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent, 
-              onPanUpdate: (details) {
-                // Сюда будут прилетать свайпы для вращения модели
-                debugPrint("Свайп по сцене: ${details.delta}");
-                // TODO: Передать координаты в Unity через MethodChannel
-              },
-              onTap: () {
-                debugPrint("Клик по 3D зоне!");
-              },
-            ),
-          ),
-
-          // 3. ЛЕВАЯ ПАНЕЛЬ
           Positioned(
             left: 16,
-            top: 16,
-            bottom: 16,
+            top: 6,
             width: 200,
+            height: 500,
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.black54, 
@@ -98,34 +88,6 @@ class _HomePageState extends State<HomePage> {
                     child: ElevatedButton(
                       onPressed: () => debugPrint('Нажата левая кнопка ${index + 1}'),
                       child: Text('Действие ${index + 1}'),
-                    ),
-                  ),
-                )),
-              ),
-            ),
-          ),
-
-          // 4. ПРАВАЯ ПАНЕЛЬ
-          Positioned(
-            right: 16,
-            top: 16,
-            bottom: 16,
-            width: 200,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(4, (index) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => debugPrint('Нажата правая кнопка ${index + 1}'),
-                      child: Text('Меню ${index + 1}'),
                     ),
                   ),
                 )),
