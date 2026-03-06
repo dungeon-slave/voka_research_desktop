@@ -27,7 +27,8 @@
 		33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F22044A3C60003C045 /* Assets.xcassets */; };
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
-		CE6145782F48597000642736 /* MacOS.app in Resources */ = {isa = PBXBuildFile; fileRef = CE6145772F48597000642736 /* MacOS.app */; };
+		CE3E2F332F4DA9EB0022ADE6 /* UnityTextureSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE3E2F322F4DA9EB0022ADE6 /* UnityTextureSource.swift */; };
+		CE3E2F3A2F4DD2E10022ADE6 /* MacOS.app in Resources */ = {isa = PBXBuildFile; fileRef = CE3E2F392F4DD2D30022ADE6 /* MacOS.app */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,7 +80,8 @@
 		33E5194F232828860026EE4D /* AppInfo.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppInfo.xcconfig; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
-		CE6145772F48597000642736 /* MacOS.app */ = {isa = PBXFileReference; lastKnownFileType = wrapper.application; path = MacOS.app; sourceTree = "<group>"; };
+		CE3E2F322F4DA9EB0022ADE6 /* UnityTextureSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnityTextureSource.swift; sourceTree = "<group>"; };
+		CE3E2F392F4DD2D30022ADE6 /* MacOS.app */ = {isa = PBXFileReference; lastKnownFileType = wrapper.application; path = MacOS.app; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -122,12 +124,12 @@
 		33CC10E42044A3C60003C045 = {
 			isa = PBXGroup;
 			children = (
+				CE3E2F392F4DD2D30022ADE6 /* MacOS.app */,
 				33FAB671232836740065AC1E /* Runner */,
 				33CEB47122A05771004F2AC0 /* Flutter */,
 				331C80D6294CF71000263BE5 /* RunnerTests */,
 				33CC10EE2044A3C60003C045 /* Products */,
 				D73912EC22F37F3D000D13A0 /* Frameworks */,
-				CE6145772F48597000642736 /* MacOS.app */,
 			);
 			sourceTree = "<group>";
 		};
@@ -165,6 +167,7 @@
 		33FAB671232836740065AC1E /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				CE3E2F322F4DA9EB0022ADE6 /* UnityTextureSource.swift */,
 				33CC10F02044A3C60003C045 /* AppDelegate.swift */,
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
@@ -286,8 +289,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CE3E2F3A2F4DD2E10022ADE6 /* MacOS.app in Resources */,
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
-				CE6145782F48597000642736 /* MacOS.app in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -350,6 +353,7 @@
 			files = (
 				33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
+				CE3E2F332F4DA9EB0022ADE6 /* UnityTextureSource.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
