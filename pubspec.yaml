@@ -1,5 +1,5 @@
 name: voka_research_desktop
-description: "A new Flutter project."
+description: "One of approaches to share textures between flutter and unity"
 publish_to: 'none'
 
 version: 1.0.0+1
