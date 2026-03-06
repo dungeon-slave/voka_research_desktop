@@ -84,28 +84,6 @@ void StartFrameListener() {
                     InitSharedMemory();
                 }
 
-                // if (g_pBuffer) {
-                //     // ОПТИМИЗАЦИЯ: Сужаем область видимости мьютекса
-                //     {
-                //         std::lock_guard<std::mutex> lock(g_buffer_mutex);
-                //         memcpy(g_local_buffer.data(), g_pBuffer, kBufferSize);
-                        
-                //         // --- ЭКСПЕРИМЕНТ: Уничтожаем прозрачность ---
-                //         // Проходим по всему массиву и делаем каждый пиксель непрозрачным (Alpha = 255)
-                //         // Формат пикселя BGRA или RGBA, альфа всегда 4-й байт
-                //         uint8_t* pixels = g_local_buffer.data();
-                //         for (size_t i = 3; i < kBufferSize; i += 4) {
-                //             pixels[i] = 255; 
-                //         }
-                //         // ----------------------------------------------
-                //     } // <-- Мьютекс отпускается
-                    
-                //     // Уведомляем Flutter
-                //     if (g_c_texture_registrar && g_unity_texture_id != -1) {
-                //         FlutterDesktopTextureRegistrarMarkExternalTextureFrameAvailable(g_c_texture_registrar, g_unity_texture_id);
-                //     }
-                // }
-
                 if (g_pBuffer) {
                     // ОПТИМИЗАЦИЯ: Сужаем область видимости мьютекса
                     {

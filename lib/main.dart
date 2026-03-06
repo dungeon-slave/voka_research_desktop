@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Фон может быть любым, он под текстурой
+      backgroundColor: Colors.transparent, // Фон может быть любым, он под текстурой
       body: Stack(
         children: [
           Positioned.fill(
