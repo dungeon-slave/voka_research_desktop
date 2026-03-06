@@ -13,7 +13,7 @@ class AnatomyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const HomePage(), 
+      home: const HomePage(),
     );
   }
 }
@@ -26,9 +26,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Канал для общения с C++
   static const MethodChannel _channel = MethodChannel('unity_channel');
-  
+
   int? _textureId;
 
   @override
@@ -39,11 +38,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _initUnityTexture() async {
     try {
-      // Запрашиваем ID текстуры у C++
       final int id = await _channel.invokeMethod('getTextureId');
-      setState(() {
-        _textureId = id;
-      });
+
+      setState(() => _textureId = id);
     } catch (e) {
       debugPrint("Ошибка получения Texture ID: $e");
     }
@@ -52,18 +49,18 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, // Фон может быть любым, он под текстурой
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           Positioned.fill(
             child: _textureId == null
                 ? const Center(child: CircularProgressIndicator())
                 : Transform.scale(
-                    scaleX: 1, // Исправляет отзеркаливание по горизонтали
-                    scaleY: -1, // Переворачивает картинку по вертикали
+                    scaleX: 1,
+                    scaleY: -1,
                     alignment: Alignment.center,
                     child: Texture(
-                      textureId: _textureId!, 
+                      textureId: _textureId!,
                       filterQuality: FilterQuality.high,
                     ),
                   ),
@@ -75,22 +72,26 @@ class _HomePageState extends State<HomePage> {
             height: 500,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black54, 
+                color: Colors.black54,
                 borderRadius: BorderRadius.circular(16),
               ),
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(4, (index) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => debugPrint('Нажата левая кнопка ${index + 1}'),
-                      child: Text('Действие ${index + 1}'),
+                children: List.generate(
+                  4,
+                  (index) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () =>
+                            debugPrint('Нажата левая кнопка ${index + 1}'),
+                        child: Text('Действие ${index + 1}'),
+                      ),
                     ),
                   ),
-                )),
+                ),
               ),
             ),
           ),
